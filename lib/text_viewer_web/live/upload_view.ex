@@ -3,6 +3,7 @@ defmodule TextViewerWeb.UploadView do
   use TextViewerWeb, :live_view
 
   import Phoenix.Component
+  import LiveSelect
 
   # Max file size: 1GB
   @max_file_size 1000_000_000
@@ -15,6 +16,11 @@ defmodule TextViewerWeb.UploadView do
      |> assign(:content, nil)
      |> assign(:current_section, 0)
      |> assign(:state, :upload)
+     |> assign(:parse_modes, %{
+       "start_with_equal" => :start_with_equal,
+       "split_by_dash" => :split_by_dash
+     })
+     |> assign(:parse_mode, "split_by_dash")
      |> allow_upload(:novel,
        accept: ~w(.txt),
        auto_upload: true,
@@ -52,7 +58,7 @@ defmodule TextViewerWeb.UploadView do
         end)
 
       Task.async(fn ->
-        TextViewer.TextReader.read(uploaded_file)
+        TextViewer.TextReader.read(uploaded_file, socket.assigns.parse_mode)
       end)
 
       socket =
@@ -94,6 +100,7 @@ defmodule TextViewerWeb.UploadView do
       <div>
         <form id="upload-form" phx-submit="save" phx-change="validate">
           <.live_file_input upload={@uploads.novel} />
+          <%!-- <.live_select field={@parse_mode} /> --%>
           <.button type="submit">Upload</.button>
         </form>
 
