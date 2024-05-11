@@ -3,7 +3,6 @@ defmodule TextViewerWeb.UploadView do
   use TextViewerWeb, :live_view
 
   import Phoenix.Component
-  import LiveSelect
 
   # Max file size: 1GB
   @max_file_size 1000_000_000
@@ -16,11 +15,11 @@ defmodule TextViewerWeb.UploadView do
      |> assign(:content, nil)
      |> assign(:current_section, 0)
      |> assign(:state, :upload)
-     |> assign(:parse_modes, %{
-       "start_with_equal" => :start_with_equal,
-       "split_by_dash" => :split_by_dash
-     })
-     |> assign(:parse_mode, "split_by_dash")
+     |> assign(:parse_mode, :split_by_dash)
+     |> assign(:parse_modes,
+       "Start with equal": :start_with_equal,
+       "Split by dash": :split_by_dash
+     )
      |> allow_upload(:novel,
        accept: ~w(.txt),
        auto_upload: true,
@@ -30,8 +29,8 @@ defmodule TextViewerWeb.UploadView do
   end
 
   @impl true
-  def handle_event("validate", _params, socket) do
-    {:noreply, socket}
+  def handle_event("validate", %{"mode-selection" => parse_mode} = _params, socket) do
+    {:noreply, socket |> assign(:parse_mode, String.to_atom(parse_mode))}
   end
 
   @impl true
@@ -51,7 +50,13 @@ defmodule TextViewerWeb.UploadView do
 
       uploaded_file =
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
-          dest = Path.join("priv/static/uploads", Path.basename(path))
+          upload_path = "priv/static/uploads"
+
+          if !File.exists?(upload_path) do
+            File.mkdir!(upload_path)
+          end
+
+          dest = Path.join(upload_path, Path.basename(path))
           File.cp!(path, dest)
 
           {:ok, dest}
@@ -100,7 +105,13 @@ defmodule TextViewerWeb.UploadView do
       <div>
         <form id="upload-form" phx-submit="save" phx-change="validate">
           <.live_file_input upload={@uploads.novel} />
-          <%!-- <.live_select field={@parse_mode} /> --%>
+          <.input
+            name="mode-selection"
+            type="select"
+            field={@parse_mode}
+            options={@parse_modes}
+            value={:split_by_dash}
+          />
           <.button type="submit">Upload</.button>
         </form>
 
@@ -151,8 +162,8 @@ defmodule TextViewerWeb.UploadView do
               </div>
             </div>
 
-            <div id="section" class="w-4/5 flex flex-col grid grid-cols-5  overflow-scroll">
-              <div class="bg-gray-100 col-start-2 col-end-4 shadow-xl rounded p-4">
+            <div id="section" class="w-4/5 flex flex-col grid grid-cols-5">
+              <div class="bg-gray-100 col-start-2 col-end-4 shadow-xl overflow-scroll rounded p-4">
                 <%= with %{id: id, title: title, lines: lines} <- Enum.at(@content, @current_section) do %>
                   <.live_component
                     id={id}
