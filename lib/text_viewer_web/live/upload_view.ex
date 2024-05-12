@@ -189,30 +189,61 @@ defmodule TextViewerWeb.UploadView do
     <% else %>
       <div class="">
         <%= if @state == :parse do %>
-          <p>正在解析上传文件 ...</p>
+          <p class="text-xl font-bold">正在解析上传文件 ...</p>
         <% else %>
-          <div class="flex h-screen w-screen p-2 focus:cursor-auto">
-            <div id="toc-bar" class="w-1/5 bg-white shadow-xl rounded overflow-scroll">
-              <div class="grid grid-col-1 p-4">
-                <form id="jump-section" phx-submit="change-section" phx-change="validate-section">
-                  <p class="text-center text-xl text-bold font-serif">跳转至指定章节</p>
-                  <.input type="search" name="index" value={@current_section} />
-                </form>
+          <div class="flex h-screen w-screen p-2 cursor-auto justify-center">
+            <%!-- TOC --%>
+            <div id="toc-bar" class="w-1/5 bg-white shadow-xl rounded overflow-auto">
+              <%!-- Jump form --%>
+              <form
+                id="jump-section"
+                phx-submit="change-section"
+                phx-change="validate-section"
+                class="mx-4 p-2"
+              >
+                <p class="text-center text-xl font-bold font-serif">跳转至指定章节</p>
+                <.input type="search" name="index" value={@current_section} />
+              </form>
 
+              <%!-- Section list --%>
+              <div
+                id="section-list"
+                phx-hook="ScrollToSection"
+                data-section={@current_section}
+                class="grid grid-col-1 p-4 select-none"
+              >
                 <%= for {%{id: _, title: title, lines: _}, index} <- Enum.with_index(@content) do %>
-                  <div
-                    phx-click="change-section"
-                    phx-value-index={index}
-                    class="text-left text-xl text-bold font-serif p-2 hover:bg-gray-200 cursor-pointer"
-                  >
-                    <%= index %> -- <%= title %>
-                  </div>
+                  <%= if index == @current_section do %>
+                    <div
+                      id={"section-tab-#{index}"}
+                      phx-click="change-section"
+                      phx-value-index={index}
+                      class="text-left text-xl font-bold font-serif mx-4 p-2 bg-gray-200"
+                    >
+                      <%= index %> -- <%= title %>
+                    </div>
+                  <% else %>
+                    <div
+                      id={"section-tab-#{index}"}
+                      phx-click="change-section"
+                      phx-value-index={index}
+                      class="text-left text-xl font-serif mx-4 p-2 hover:bg-gray-200"
+                    >
+                      <%= index %> -- <%= title %>
+                    </div>
+                  <% end %>
                 <% end %>
               </div>
             </div>
 
+            <%!-- Main content --%>
             <div id="section" class="w-4/5 flex flex-col grid grid-cols-5">
-              <div class="col-start-2 col-end-4 p-4 bg-gray-100 shadow-xl rounded overflow-scroll">
+              <div
+                id="section-content"
+                phx-hook="ResetScroll"
+                class="col-start-2 col-end-4 p-4 bg-gray-100 shadow-xl rounded overflow-scroll select-none"
+              >
+                <%!-- Jump button --%>
                 <div class="flex justify-between">
                   <.button class="m-4" phx-click="dec-section" phx-value-index={@current_section}>
                     上一章
@@ -221,10 +252,12 @@ defmodule TextViewerWeb.UploadView do
                     下一章
                   </.button>
                 </div>
+
+                <%!-- Section content --%>
                 <%= with %{id: id, title: title, lines: lines} <- Enum.at(@content, @current_section) do %>
                   <.live_component
                     id={id}
-                    module={TextViewerWeb.LiveComponents.SectionComponent}
+                    module={TextViewerWeb.LiveComponents.SectionContentComponent}
                     title={title}
                     lines={lines}
                   />
