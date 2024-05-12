@@ -12,7 +12,7 @@ defmodule TextViewerWeb.UploadView do
     {:ok,
      socket
      |> assign(:uploaded_file, nil)
-     |> assign(:content, nil)
+     |> assign(:content, [])
      |> assign(:current_section, 0)
      |> assign(:state, :upload)
      |> assign(:parse_mode, :split_by_dash)
@@ -39,8 +39,52 @@ defmodule TextViewerWeb.UploadView do
   end
 
   @impl true
+  def handle_event("validate-section", %{"index" => _}, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("change-section", %{"index" => index}, socket) do
     {:noreply, assign(socket, :current_section, String.to_integer(index))}
+  end
+
+  @impl true
+  def handle_event("inc-section", %{"index" => index}, socket) do
+    max = length(socket.assigns.content) - 1
+    index = String.to_integer(index)
+
+    if index < max do
+      {:noreply, assign(socket, :current_section, index + 1)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("dec-section", %{"index" => index}, socket) do
+    index = String.to_integer(index)
+
+    if index > 0 do
+      {:noreply, assign(socket, :current_section, index - 1)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("maybe-change-section", %{"key" => key}, socket) do
+    old_idx = socket.assigns.current_section
+
+    case key do
+      "ArrowLeft" ->
+        {:noreply, push_event(socket, "dec-section", %{"index" => old_idx})}
+
+      "ArrowRight" ->
+        {:noreply, push_event(socket, "inc-section", %{"index" => old_idx})}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -112,7 +156,7 @@ defmodule TextViewerWeb.UploadView do
             options={@parse_modes}
             value={:split_by_dash}
           />
-          <.button type="submit">Upload</.button>
+          <.button type="submit">上传</.button>
         </form>
 
         <section phx-drop-target={@uploads.novel.ref}>
@@ -145,11 +189,16 @@ defmodule TextViewerWeb.UploadView do
     <% else %>
       <div class="">
         <%= if @state == :parse do %>
-          <p>Waiting for file to be parsed...</p>
+          <p>正在解析上传文件 ...</p>
         <% else %>
-          <div class="flex h-screen w-screen p-2">
+          <div class="flex h-screen w-screen p-2 focus:cursor-auto">
             <div id="toc-bar" class="w-1/5 bg-white shadow-xl rounded overflow-scroll">
               <div class="grid grid-col-1 p-4">
+                <form id="jump-section" phx-submit="change-section" phx-change="validate-section">
+                  <p class="text-center text-xl text-bold font-serif">跳转至指定章节</p>
+                  <.input type="search" name="index" value={@current_section} />
+                </form>
+
                 <%= for {%{id: _, title: title, lines: _}, index} <- Enum.with_index(@content) do %>
                   <div
                     phx-click="change-section"
@@ -163,7 +212,15 @@ defmodule TextViewerWeb.UploadView do
             </div>
 
             <div id="section" class="w-4/5 flex flex-col grid grid-cols-5">
-              <div class="bg-gray-100 col-start-2 col-end-4 shadow-xl overflow-scroll rounded p-4">
+              <div class="col-start-2 col-end-4 p-4 bg-gray-100 shadow-xl rounded overflow-scroll">
+                <div class="flex justify-between">
+                  <.button class="m-4" phx-click="dec-section" phx-value-index={@current_section}>
+                    上一章
+                  </.button>
+                  <.button class="m-4" phx-click="inc-section" phx-value-index={@current_section}>
+                    下一章
+                  </.button>
+                </div>
                 <%= with %{id: id, title: title, lines: lines} <- Enum.at(@content, @current_section) do %>
                   <.live_component
                     id={id}

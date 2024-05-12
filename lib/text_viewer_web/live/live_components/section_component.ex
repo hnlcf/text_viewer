@@ -3,12 +3,12 @@ defmodule TextViewerWeb.LiveComponents.SectionComponent do
 
   def render(assigns) do
     ~H"""
-    <section>
+    <div class="">
       <p class="font-serif font-bold text-2xl text-center m-4"><%= @title %></p>
       <%= for line <- @lines do %>
         <p class="font-serif text-xl leading-loose line-clamp-3 indent-10"><%= line %></p>
       <% end %>
-    </section>
+    </div>
     """
   end
 end
