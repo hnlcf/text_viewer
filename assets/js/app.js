@@ -36,7 +36,7 @@ Hooks.ScrollToSection = {
     console.log("scrolling to section-tab-" + this.section());
     let section = document.getElementById("section-tab-" + this.section());
     section.scrollIntoView({
-      behavior: "smooth",
+      behavior: "auto",
       block: "center",
       inline: "center",
     });
