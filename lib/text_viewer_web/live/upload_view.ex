@@ -49,38 +49,23 @@ defmodule TextViewerWeb.UploadView do
   end
 
   @impl true
-  def handle_event("inc-section", %{"index" => index}, socket) do
-    max = length(socket.assigns.content) - 1
-    index = String.to_integer(index)
-
-    if index < max do
-      {:noreply, assign(socket, :current_section, index + 1)}
-    else
-      {:noreply, socket}
-    end
+  def handle_event("inc-section", _params, socket) do
+    {:noreply, inc_section(socket)}
   end
 
   @impl true
-  def handle_event("dec-section", %{"index" => index}, socket) do
-    index = String.to_integer(index)
-
-    if index > 0 do
-      {:noreply, assign(socket, :current_section, index - 1)}
-    else
-      {:noreply, socket}
-    end
+  def handle_event("dec-section", _params, socket) do
+    {:noreply, dec_section(socket)}
   end
 
   @impl true
   def handle_event("maybe-change-section", %{"key" => key}, socket) do
-    old_idx = socket.assigns.current_section
-
     case key do
       "ArrowLeft" ->
-        {:noreply, push_event(socket, "dec-section", %{"index" => old_idx})}
+        {:noreply, dec_section(socket)}
 
       "ArrowRight" ->
-        {:noreply, push_event(socket, "inc-section", %{"index" => old_idx})}
+        {:noreply, inc_section(socket)}
 
       _ ->
         {:noreply, socket}
@@ -142,6 +127,27 @@ defmodule TextViewerWeb.UploadView do
   defp error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
   defp error_to_string(:too_many_files), do: "You have selected too many files"
 
+  defp inc_section(socket) do
+    max = length(socket.assigns.content) - 1
+    index = socket.assigns.current_section
+
+    if index < max do
+      assign(socket, :current_section, index + 1)
+    else
+      socket
+    end
+  end
+
+  defp dec_section(socket) do
+    index = socket.assigns.current_section
+
+    if index > 0 do
+      assign(socket, :current_section, index - 1)
+    else
+      socket
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -191,7 +197,10 @@ defmodule TextViewerWeb.UploadView do
         <%= if @state == :parse do %>
           <p class="text-xl font-bold">正在解析上传文件 ...</p>
         <% else %>
-          <div class="flex h-screen w-screen p-2 cursor-auto justify-center">
+          <div
+            phx-window-keydown="maybe-change-section"
+            class="flex h-screen w-screen p-2 cursor-auto justify-center"
+          >
             <%!-- TOC --%>
             <div id="toc-bar" class="w-1/5 bg-white shadow-xl rounded overflow-auto">
               <%!-- Jump form --%>
@@ -245,10 +254,10 @@ defmodule TextViewerWeb.UploadView do
               >
                 <%!-- Jump button --%>
                 <div class="flex justify-between">
-                  <.button class="m-4" phx-click="dec-section" phx-value-index={@current_section}>
+                  <.button class="m-4" phx-click="dec-section">
                     上一章
                   </.button>
-                  <.button class="m-4" phx-click="inc-section" phx-value-index={@current_section}>
+                  <.button class="m-4" phx-click="inc-section">
                     下一章
                   </.button>
                 </div>
